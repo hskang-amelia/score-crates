@@ -190,33 +190,42 @@ crate.spec(
 
 #iceoryx2 does not yet support QNX8 correctly so we patch
 #
-# `libc_platform` (added here 2026-09-08): iceoryx2-pal-posix-qnx8's own
-# Cargo.toml [features] documents this as "Use https://crates.io/crates/libc
-# for the platform abstraction. This simplifies cross-compilation since
-# bindgen is not required anymore." Without it, this crate's build.rs takes
-# its default path — bindgen + a real C toolchain/sysroot, whose only
-# non-generic branch is `target_os == "nto"` (QNX) — which fails to produce
-# working bindings under a hermetic Linux Bazel toolchain (no QNX_TARGET/
-# QNX_HOST, no bindgen-friendly libclang setup for this crate). This is the
-# actual root cause of `libkyron_foundation`/`liblogging_tracing`'s Linux
-# build failing when they pull this crate in (`kyron`'s own BUILD files link
-# it unconditionally, not just for QNX — there is no separate Linux-native
-# iceoryx2 vendored here, only this qorix-group QNX8 fork, so it has to work
-# on Linux too). `libc_platform` activates the optional `libc` dependency
-# already declared in that Cargo.toml and skips bindgen/cc entirely.
+# `libc_platform`/`deps` (added here 2026-09-08, porting the already-verified
+# fix from upstream `eclipse-score/score-crates#73` — real `bazel build`
+# confirmed there with `communication` as the root module, per
+# `state_management/docs/design-notes.md` §7.1's note on it): iceoryx2-pal-
+# posix-qnx8's own Cargo.toml declares a `libc_platform` feature ("Use
+# https://crates.io/crates/libc for the platform abstraction. This
+# simplifies cross-compilation since bindgen is not required anymore.").
+# Without it, this crate's build.rs takes its default path — bindgen + a
+# real C toolchain/sysroot, whose only non-generic branch is
+# `target_os == "nto"` (QNX) — which fails under a hermetic Linux Bazel
+# toolchain. This is the actual root cause of `libkyron_foundation`/
+# `liblogging_tracing`'s Linux build failing when they pull this crate in
+# (`kyron`'s own BUILD files link it unconditionally, not just for QNX —
+# there is no separate Linux-native iceoryx2 vendored here, only this
+# qorix-group QNX8 fork, so it has to work on Linux too).
+# Enabling the feature alone is *not* sufficient, though: the crate's
+# optional `libc` dep is declared as `{ workspace = true, optional = true }`
+# in its Cargo.toml, but this crate is pulled in via `git` with
+# `strip_prefix` (no workspace root Cargo.toml present in that stripped
+# view) — cargo-bazel can't resolve that version reference and silently
+# drops the dep even with the feature enabled. `deps` below wires the
+# already-vendored `libc` crate in directly instead of relying on that
+# resolution.
 #
 # NOTE for whoever applies this: `Cargo.Bazel.lock` was NOT regenerated
-# alongside this change (no Bazel toolchain was available to run it from
-# where this was written) — run `CARGO_BAZEL_REPIN=1 bazel build //...`
-# (or this rules_rust version's equivalent repin invocation) once, with real
-# network access to `github.com/qorix-group/iceoryx2`, before relying on
-# this. Until then, Bazel should refuse to build with a lockfile-out-of-date
-# error rather than silently using stale data — that's the expected,
-# safe failure mode for this one commit.
+# alongside this change in *this* fork (no Bazel toolchain was available in
+# the environment this was written in) — run
+# `CARGO_BAZEL_REPIN=1 bazel build //...` (or this rules_rust version's
+# equivalent repin invocation) once before relying on this. Until then,
+# Bazel should refuse to build with a lockfile-out-of-date error rather
+# than silently using stale data.
 crate.annotation(
     crate = "iceoryx2-pal-posix-qnx8",
-    crate_features = ["libc_platform"],
     patches = ["//patches:qnx8_iceoryx2.patch"],
+    crate_features = ["libc_platform"],
+    deps = ["@crate_index__libc-0.2.186//:libc"],
     repositories = ["crate_index"],
 )
 crate.spec(
