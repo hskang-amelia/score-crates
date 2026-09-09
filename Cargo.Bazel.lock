@@ -1,5 +1,5 @@
 {
-  "checksum": "b3987846afd9d77626eb292c5e15da1921775911b0ea5577deb6ddba25dec68f",
+  "checksum": "e0bbaf641671783573922d29b065fb9a812ebc2029e68a785e0ab4c046498041",
   "crates": {
     "adler32 1.2.0": {
       "name": "adler32",
@@ -8957,6 +8957,12 @@
         "compile_data_glob": [
           "**"
         ],
+        "crate_features": {
+          "common": [
+            "libc_platform"
+          ],
+          "selects": {}
+        },
         "deps": {
           "common": [
             {
@@ -8986,6 +8992,12 @@
               }
             ]
           }
+        },
+        "extra_deps": {
+          "common": [
+            "@crate_index__libc-0.2.186//:libc"
+          ],
+          "selects": {}
         },
         "edition": "2021",
         "version": "0.7.0"
